@@ -542,8 +542,9 @@ const loadingMsg = document.getElementById('loadingMsg');
    district's fill. Clicks within r px of the label centroid always
    open the correct district regardless of BFS assignment. */
 const LABEL_OVERRIDES = [
-  // Hyderabad: label falls below the tiny district in rangareddy/border area (was at 362,586 = yadadri — wrong)
-  { id:'hyderabad',  cx:350, cy:635, r:30 },
+  // Hyderabad: tiny district — PNG colors most visual area as rangareddy/yadadri; two circles cover full extent
+  { id:'hyderabad',  cx:350, cy:620, r:58 },
+  { id:'hyderabad',  cx:350, cy:690, r:58 },
   // Medchal: "Medchal" word printed in siddipet area (northwest of actual district pixels)
   { id:'medchal',    cx:268, cy:507, r:32 },
   // Medchal: "Malkajgiri" word at siddipet/yadadri boundary
