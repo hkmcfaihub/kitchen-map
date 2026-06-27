@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telangana Kitchen Map — HKMCF</title>
+  <style>
+    :root {
+      --primary:   #1b3d6f;
+      --primary-dk:#122a4e;
+      --green:     #2e7d52;
+      --amber:     #d97706;
+      --bg:        #e8edf5;
+      --white:     #ffffff;
+      --border:    #d1dae6;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --shadow-sm: 0 1px 4px rgba(0,0,0,.10);
+      --shadow-md: 0 6px 24px rgba(0,0,0,.15);
+      --shadow-xl: 0 20px 60px rgba(0,0,0,.28);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, Arial, sans-serif; color: var(--text); }
+
+    /* ── HEADER ── */
+    header {
+      height: 60px; background: var(--primary); color: #fff;
+      display: flex; align-items: center; padding: 0 24px; gap: 14px;
+      box-shadow: var(--shadow-md); position: relative; z-index: 10; flex-shrink: 0;
+    }
+    .hdr-logo {
+      height: 40px; display: flex; align-items: center;
+    }
+    .hdr-logo img { height: 40px; width: auto; display: block; background: #fff; border-radius: 6px; padding: 3px; }
+    .hdr-title { font-size: 16px; font-weight: 700; }
+    .hdr-sub   { font-size: 11.5px; opacity: .65; margin-top: 1px; }
+    .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+    .hdr-stat  { text-align: right; font-size: 11.5px; opacity: .75; }
+    .hdr-stat strong { display: block; font-size: 17px; font-weight: 700; opacity: 1; }
+    .hdr-badge {
+      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+      border-radius: 20px; padding: 5px 14px; font-size: 12px;
+    }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; height: calc(100vh - 60px); overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 256px; background: var(--white); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .sb-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); }
+    .sb-head h2 {
+      font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--primary); font-weight: 700; margin-bottom: 10px;
+    }
+    .sb-search { position: relative; }
+    .sb-search input {
+      width: 100%; padding: 7px 10px 7px 30px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 13px; outline: none; background: #f8fafc;
+      transition: border-color .15s;
+    }
+    .sb-search input:focus { border-color: var(--primary); background: #fff; }
+    .sb-search svg {
+      position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+      width: 13px; height: 13px; stroke: var(--muted); fill: none;
+      stroke-width: 2; stroke-linecap: round;
+    }
+    .sb-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .sb-list::-webkit-scrollbar { width: 4px; }
+    .sb-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+    .sb-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;
+      transition: all .12s; margin-bottom: 1px;
+    }
+    .sb-item:hover  { background: #eff6ff; color: var(--primary); }
+    .sb-item.active { background: var(--primary); color: #fff; }
+    .sb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 8px; flex-shrink: 0; }
+    .sb-item.active .sb-dot { background: #fff; }
+    .sb-item.no-data .sb-dot { background: #cbd5e1; }
+    .sb-badge {
+      font-size: 10.5px; font-weight: 700; background: var(--amber); color: #fff;
+      border-radius: 10px; padding: 1px 7px; min-width: 22px; text-align: center;
+    }
+    .sb-item.active .sb-badge { background: rgba(255,255,255,.3); }
+    .sb-item.no-data .sb-badge { background: #e2e8f0; color: var(--muted); }
+    .sb-footer { padding: 10px 16px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); background: #f8fafc; }
+
+    /* ── MAP AREA ── */
+    #mapSection {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+    }
+    #mapContainer {
+      flex: 1; background: var(--bg); position: relative; overflow: auto; min-height: 0;
+    }
+    #mapInner {
+      min-height: 100%; min-width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; box-sizing: border-box;
+    }
+    #canvasWrap {
+      position: relative; flex-shrink: 0;
+      /* sized by JS */
+    }
+    /* map zoom control bar (below map, always visible) */
+    #mapControls {
+      flex-shrink: 0; display: none; flex-direction: row;
+      align-items: center; justify-content: center; gap: 8px;
+      padding: 8px 16px; background: #f8fafc; border-top: 1px solid var(--border);
+    }
+
+    #mainCanvas {
+      display: block;
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    }
+
+    /* sidebar district name link */
+    .sb-link {
+      flex: 1; color: var(--primary); text-decoration: none; font-size: 13px;
+      cursor: pointer;
+    }
+    .sb-link:hover { text-decoration: underline; }
+
+    /* ── MODAL ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,.55); z-index: 1000;
+      justify-content: center; align-items: center;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 12px;
+      width: min(92vw, 1000px); height: min(88vh, 680px);
+      display: flex; flex-direction: column;
+      box-shadow: var(--shadow-xl); overflow: hidden;
+      animation: pop .22s ease;
+    }
+    @keyframes pop {
+      from { transform: scale(.96) translateY(12px); opacity: 0; }
+      to   { transform: scale(1)   translateY(0);    opacity: 1; }
+    }
+    .modal-hdr {
+      background: var(--primary); color: #fff; padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+    }
+    .modal-hdr-icon {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+    }
+    .modal-hdr h2 { font-size: 17px; font-weight: 700; }
+    .modal-hdr p  { font-size: 12px; opacity: .65; margin-top: 2px; }
+    .modal-close {
+      margin-left: auto; width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+      color: #fff; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: background .15s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,.3); }
+    .modal-body { flex: 1; display: flex; overflow: hidden; }
+
+    /* district image panel wrapper (holds panel + zoom overlay) */
+    .img-panel-wrap {
+      flex: 1; position: relative; display: flex; overflow: hidden;
+    }
+    .img-panel {
+      flex: 1; background: #f0f4f8;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+    }
+    .img-panel img {
+      width: 100%; height: 100%; object-fit: contain;
+      display: block; transition: width .15s, height .15s;
+    }
+
+    .km-pin { position:absolute; pointer-events:none; z-index:15; transform:translate(-50%,-100%); }
+
+    /* zoom controls overlay */
+    .zoom-controls {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.93); border: 1px solid #d1d5db;
+      border-radius: 20px; padding: 5px 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18); z-index: 10;
+    }
+    .zoom-btn {
+      width: 26px; height: 26px; border-radius: 50%; border: none;
+      background: var(--primary); color: #fff; font-size: 18px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      line-height: 1; padding: 0; flex-shrink: 0;
+    }
+    .zoom-btn:hover { background: var(--primary-dk); }
+    .zoom-lbl {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      min-width: 38px; text-align: center;
+    }
+    .img-placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 40px; text-align: center; color: var(--muted);
+    }
+    .img-placeholder .ph-icon { font-size: 48px; }
+    .img-placeholder h3 { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .img-placeholder p  { font-size: 13px; max-width: 260px; }
+    .img-placeholder .ph-badge {
+      background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+      border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600;
+    }
+
+    /* kitchen panel */
+    .kitchen-panel {
+      width: 260px; border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+    }
+    .kp-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+    .kp-head h3 { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--primary); font-weight: 700; }
+    .kp-count { font-size: 28px; font-weight: 800; color: var(--green); margin-top: 2px; }
+    .kp-label { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .kp-list  { flex: 1; overflow-y: auto; padding: 10px; }
+    .kp-list::-webkit-scrollbar { width: 4px; }
+    .kp-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+    .kitchen-card {
+      border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px;
+      margin-bottom: 8px; background: #fff; box-shadow: var(--shadow-sm);
+    }
+    .kc-name    { font-size: 13px; font-weight: 600; }
+    .kc-address { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+    .kc-badge   {
+      display: inline-block; margin-top: 5px; font-size: 10.5px; font-weight: 600;
+      padding: 2px 8px; border-radius: 10px; background: #ecfdf5; color: var(--green);
+    }
+    .kp-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 10px; padding: 24px; text-align: center; color: var(--muted); font-size: 13px;
+    }
+    .kp-empty .icon { font-size: 36px; }
+
+    /* modal footer */
+    .modal-ftr {
+      padding: 12px 20px; border-top: 1px solid var(--border); background: #f8fafc;
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px;
+      border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+      border: none; text-decoration: none; transition: all .14s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dk); }
+    .btn-gmaps   { background: #1a73e8; color: #fff; }
+    .btn-gmaps:hover   { background: #1558b0; }
+    .btn-kloc    { background: #ea580c; color: #fff; }
+    .btn-kloc:hover    { background: #c2410c; }
+    .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover   { background: #e2e8f0; color: var(--text); }
+    .spacer { flex: 1; }
+
+    /* loading state */
+    #loadingMsg {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      text-align: center; color: var(--muted); font-size: 14px; z-index: 5;
+    }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid #d1dae6;
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr-logo">
+    <img src="hkmcf_logo.png" alt="HKMCF Logo" />
+  </div>
+  <div>
+    <div class="hdr-title">Telangana Kitchen Map</div>
+    <div class="hdr-sub">Hare Krishna Movement Charitable Foundation</div>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-stat"><strong id="hdrKitchens">0</strong>Kitchens</div>
+    <div class="hdr-stat"><strong>33</strong>Districts</div>
+    <div class="hdr-badge">Telangana, India</div>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <h2>Districts</h2>
+      <div class="sb-search">
+        <svg viewBox="0 0 20 20"><circle cx="8" cy="8" r="5"/><line x1="12" y1="12" x2="17" y2="17"/></svg>
+        <input type="text" id="searchInput" placeholder="Search district…" oninput="filterList(this.value)" />
+      </div>
+    </div>
+    <div class="sb-list" id="sbList"></div>
+    <div class="sb-footer" id="sbFooter"></div>
+  </aside>
+
+  <!-- MAP -->
+  <div id="mapSection">
+    <div id="mapContainer">
+      <div id="loadingMsg">
+        <div class="spinner"></div>
+        Loading Telangana map…
+      </div>
+      <div id="mapInner">
+        <div id="canvasWrap" style="display:none">
+          <canvas id="mainCanvas" width="1000" height="1000"></canvas>
+          <div id="pinOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
+        </div>
+      </div>
+    </div>
+    <div id="mapControls">
+      <button class="zoom-btn" onclick="mapZoomOut()" title="Zoom out">−</button>
+      <span class="zoom-lbl" id="mapZoomLbl">100%</span>
+      <button class="zoom-btn" onclick="mapZoomIn()" title="Zoom in">+</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-hdr">
+      <div class="modal-hdr-icon">📍</div>
+      <div>
+        <h2 id="mName">District</h2>
+        <p id="mSub">District · Telangana, India</p>
+      </div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- District map image + zoom overlay -->
+      <div class="img-panel-wrap">
+        <div class="img-panel" id="imgPanel"></div>
+        <div class="zoom-controls" id="zoomControls" style="display:none">
+          <button class="zoom-btn" onclick="zoomOut()" title="Zoom out">−</button>
+          <span class="zoom-lbl" id="zoomLbl">100%</span>
+          <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
+        </div>
+      </div>
+      <!-- Kitchen list -->
+      <div class="kitchen-panel">
+        <div class="kp-head">
+          <h3>Kitchens</h3>
+          <div class="kp-count" id="kpCount">0</div>
+          <div class="kp-label">active kitchens in this district</div>
+        </div>
+        <div class="kp-list" id="kpList"></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <a id="btnGmaps" href="#" target="_blank" rel="noopener" class="btn btn-gmaps">📍 Google Maps</a>
+      <a id="btnKitchenLoc" href="#" target="_blank" rel="noopener" class="btn btn-kloc" style="display:none">📌 Kitchen Location</a>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DISTRICT DATA
+   seedX/seedY: pixel coordinate inside district area on the
+   1000×1000 Telangana map image (used for color sampling).
+   Adjust if a district is not detected correctly.
+   ============================================================ */
+const DISTRICTS = [
+  { id:'adilabad',      name:'Adilabad',                seedX:155, seedY:108, lat:19.664,  lng:78.532  },
+  { id:'asifabad',      name:'Kumuram Bheem Asifabad',  seedX:715, seedY:100, lat:19.362,  lng:79.275  },
+  { id:'mancherial',    name:'Mancherial',              seedX:580, seedY:160, lat:18.870,  lng:79.457  },
+  { id:'nirmal',        name:'Nirmal',                  seedX:290, seedY:185, lat:19.094,  lng:78.350  },
+  { id:'jagtial',       name:'Jagtial',                 seedX:535, seedY:220, lat:18.795,  lng:78.915  },
+  { id:'peddapalli',    name:'Peddapalli',              seedX:650, seedY:210, lat:18.615,  lng:79.374  },
+  { id:'nizamabad',     name:'Nizamabad',               seedX:235, seedY:300, lat:18.673,  lng:78.094  },
+  { id:'kamareddy',     name:'Kamareddy',               seedX:295, seedY:400, lat:18.325,  lng:78.336  },
+  { id:'medak',         name:'Medak',                   seedX:375, seedY:460, lat:17.993,  lng:78.258  },
+  { id:'sangareddy',    name:'Sangareddy',              seedX:305, seedY:510, lat:17.623,  lng:77.996  },
+  { id:'karimnagar',    name:'Karimnagar',              seedX:605, seedY:250, lat:18.61,   lng:78.92   },
+  { id:'sircilla',      name:'Rajanna Sircilla',        seedX:505, seedY:285, lat:18.446,  lng:78.688  },
+  { id:'siddipet',      name:'Siddipet',                seedX:445, seedY:365, lat:18.102,  lng:78.852  },
+  { id:'jayashankar',   name:'Jayashankar Bhupalpally', seedX:690, seedY:335, lat:18.437,  lng:79.905  },
+  { id:'mulugu',        name:'Mulugu',                  seedX:795, seedY:365, lat:18.197,  lng:80.059  },
+  { id:'jangaon',       name:'Jangaon',                 seedX:575, seedY:435, lat:17.727,  lng:79.152  },
+  { id:'hanamkonda',    name:'Hanamkonda',              seedX:625, seedY:385, lat:18.12,   lng:79.57   },
+  { id:'warangal',      name:'Warangal',                seedX:648, seedY:415, lat:17.997,  lng:79.683  },
+  { id:'bhadradri',     name:'Bhadradri Kothagudem',    seedX:820, seedY:465, lat:17.557,  lng:80.619  },
+  { id:'mahabubabad',   name:'Mahabubabad',             seedX:685, seedY:478, lat:17.598,  lng:80.001  },
+  { id:'khammam',       name:'Khammam',                 seedX:752, seedY:548, lat:17.247,  lng:80.151  },
+  { id:'hyderabad',     name:'Hyderabad',               seedX:418, seedY:492, lat:17.35,   lng:78.49   },
+  { id:'medchal',       name:'Medchal-Malkajgiri',      seedX:468, seedY:445, lat:17.77,   lng:78.73   },
+  { id:'vikarabad',     name:'Vikarabad',               seedX:268, seedY:595, lat:17.41,   lng:77.55   },
+  { id:'rangareddy',    name:'Rangareddy',              seedX:375, seedY:572, lat:17.283,  lng:78.325  },
+  { id:'nalgonda',      name:'Nalgonda',                seedX:545, seedY:572, lat:17.058,  lng:79.267  },
+  { id:'suryapet',      name:'Suryapet',                seedX:645, seedY:585, lat:17.142,  lng:79.622  },
+  { id:'yadadri',       name:'Yadadri Bhuvanagiri',     seedX:558, seedY:508, lat:17.64,   lng:78.85   },
+  { id:'wanaparthy',    name:'Wanaparthy',              seedX:398, seedY:668, lat:16.53,   lng:78.02   },
+  { id:'mahabubnagar',  name:'Mahabubnagar',            seedX:318, seedY:722, lat:16.738,  lng:77.996  },
+  { id:'nagarkurnool',  name:'Nagarkurnool',            seedX:398, seedY:785, lat:16.480,  lng:78.324  },
+  { id:'gadwal',        name:'Jogulamba Gadwal',        seedX:292, seedY:845, lat:16.234,  lng:77.805  },
+  { id:'narayanpet',    name:'Narayanpet',              seedX:198, seedY:762, lat:16.742,  lng:77.400  },
+];
+
+/* ============================================================
+   DISTRICT IMAGES
+   Add entries as you get each district's map image.
+   Key = district id, value = path relative to this HTML file.
+   ============================================================ */
+const DISTRICT_IMAGES = {
+  adilabad:    'districts/Adilabad.jpg',
+  asifabad:    'districts/Komaram Bheem Asifabad.jpg',
+  mancherial:  'districts/Mancherial_map.jpg',
+  nirmal:      'districts/Nirmal_map.jpg',
+  jagtial:     'districts/JAGTIAL.jpg',
+  peddapalli:  'districts/Peddapalli_map.jpg',
+  karimnagar:  'districts/Karimnagar_map.jpg',
+  siddipet:    'districts/Siddipet_map.jpg',
+  nizamabad:   'districts/Nizamabad.jpg',
+  kamareddy:   'districts/Kamareddy.jpg',
+  medak:       'districts/Medak.jpg',
+  sangareddy:  'districts/Sangareddy.jpg',
+  sircilla:    'districts/Rajanna Sircilla.jpg',
+  jayashankar: 'districts/Jayashankar Bhupalpally.jpeg',
+  mulugu:      'districts/Mulugu.png',
+  jangaon:     'districts/jangaon.jpeg',
+  hanamkonda:  'districts/Hanumakonda.jpg',
+  warangal:    'districts/Warangal.jpg',
+  bhadradri:   'districts/BHADRADRI KOTHAGUDEM.png',
+  mahabubabad: 'districts/Mahabubabad.jpg',
+  khammam:     'districts/Khammam.jpg',
+  hyderabad:   'districts/Hyderabad.jpg',
+  medchal:     'districts/Medchal.jpg',
+  vikarabad:   'districts/Vikarabad_map.jpg',
+  rangareddy:  'districts/rangareddy.jpg',
+  nalgonda:    'districts/Nalgonda.jpg',
+  suryapet:    'districts/Suryapet.jpg',
+  yadadri:     'districts/Yadadri Bhuvanagiri.jpeg',
+  wanaparthy:  'districts/Wanaparthy.jpg',
+  mahabubnagar:'districts/Mahabubnagar.jpg',
+  nagarkurnool:'districts/Nagarkurnool.jpg',
+  gadwal:      'districts/Jogulamba Gadwal.jpg',
+  narayanpet:  'districts/Narayanpet.jpg',
+};
+
+/* Geographic bounding boxes for each district map image (approximate) */
+const DISTRICT_BOUNDS = {
+  adilabad:    { latMin:18.85, latMax:19.92, lngMin:77.70, lngMax:79.32 },
+  asifabad:    { latMin:18.83, latMax:19.72, lngMin:78.90, lngMax:80.05 },
+  nirmal:      { latMin:18.68, latMax:19.40, lngMin:77.82, lngMax:78.77 },
+  jagtial:     { latMin:18.26, latMax:18.90, lngMin:78.56, lngMax:79.27 },
+  peddapalli:  { latMin:18.24, latMax:18.94, lngMin:79.05, lngMax:79.78 },
+  nizamabad:   { latMin:18.15, latMax:18.88, lngMin:77.68, lngMax:78.43 },
+  medak:       { latMin:17.58, latMax:18.23, lngMin:77.85, lngMax:78.62 },
+  sangareddy:  { latMin:17.29, latMax:18.07, lngMin:77.40, lngMax:78.12 },
+  karimnagar:  { latMin:18.22, latMax:18.88, lngMin:78.58, lngMax:79.40 },
+  sircilla:    { latMin:18.10, latMax:18.68, lngMin:78.42, lngMax:79.05 },
+  siddipet:    { latMin:17.72, latMax:18.54, lngMin:78.33, lngMax:79.09 },
+  jayashankar: { latMin:17.82, latMax:18.75, lngMin:79.38, lngMax:80.32 },
+  mulugu:      { latMin:17.82, latMax:18.47, lngMin:79.56, lngMax:80.62 },
+  jangaon:     { latMin:17.38, latMax:18.10, lngMin:78.74, lngMax:79.44 },
+  warangal:    { latMin:17.75, latMax:18.28, lngMin:79.20, lngMax:80.00 },
+  bhadradri:   { latMin:17.06, latMax:18.10, lngMin:80.03, lngMax:81.32 },
+  mahabubabad: { latMin:17.20, latMax:18.03, lngMin:79.56, lngMax:80.40 },
+  khammam:     { latMin:16.73, latMax:17.52, lngMin:79.73, lngMax:80.72 },
+  rangareddy:  { latMin:16.70, latMax:17.44, lngMin:77.70, lngMax:78.55 },
+  suryapet:    { latMin:16.77, latMax:17.50, lngMin:79.04, lngMax:80.10 },
+  wanaparthy:  { latMin:15.87, latMax:16.70, lngMin:77.58, lngMax:78.45 },
+  nagarkurnool:{ latMin:15.78, latMax:16.73, lngMin:77.86, lngMax:78.79 },
+  gadwal:      { latMin:15.87, latMax:16.65, lngMin:77.38, lngMax:78.25 },
+  mancherial:  { latMin:18.18, latMax:19.12, lngMin:78.98, lngMax:79.70 },
+};
+
+/* ============================================================
+   KITCHEN DATA  (replace with real data)
+   ============================================================ */
+const KITCHENS = {
+  adilabad:    [{ name:'HKMCF Kitchen – Adilabad',               address:'Adilabad, 504001',               type:'Anna Daan', lat:19.680508, lng:78.529955, mapsUrl:'https://www.google.com/maps?q=19.6805075134274,78.529955451676' }],
+  asifabad:    [{ name:'HKMCF Kitchen – Kumuram Bheem Asifabad', address:'Asifabad, 504293',               type:'Anna Daan', lat:19.451887, lng:79.035603, mapsUrl:'https://www.google.com/maps?q=19.451886745106957,79.03560349402935' }],
+  mancherial:  [{ name:'HKMCF Kitchen – Mancherial',             address:'Mancherial, 504208',             type:'Anna Daan', lat:18.8649139, lng:79.4452896, mapsUrl:'https://www.google.com/maps?q=18.8649139,79.4452896' }],
+  nirmal:      [{ name:'HKMCF Kitchen – Nirmal',                 address:'Nirmal, 504106',                 type:'Anna Daan', lat:19.110767, lng:78.343002, mapsUrl:'https://www.google.com/maps?q=19.110767170114574,78.34300181783695' }],
+  jagtial:     [{ name:'HKMCF Kitchen – Jagtial',                address:'Jagtial, 505327',                type:'Anna Daan', lat:18.790225, lng:78.909992, mapsUrl:'https://www.google.com/maps?q=18.79022459430693,78.90999219586554' }],
+  peddapalli:  [{ name:'HKMCF Kitchen – Peddapalli',             address:'Peddapalli, 505172',             type:'Anna Daan', lat:18.613726, lng:79.381207, mapsUrl:'https://www.google.com/maps?q=18.613726373489417,79.38120707862673' }],
+  nizamabad:   [{ name:'HKMCF Kitchen – Nizamabad',              address:'Nizamabad, 503001',              type:'Anna Daan', lat:18.640792, lng:78.046306, mapsUrl:'https://www.google.com/maps?q=18.6407919,78.0463055' }],
+  kamareddy:   [{ name:'HKMCF Kitchen – Kamareddy',              address:'Kamareddy, 503111',              type:'Anna Daan' }],
+  medak:       [{ name:'HKMCF Kitchen – Medak',                  address:'Medak, 502110',                  type:'Anna Daan', lat:18.040057, lng:78.258564, mapsUrl:'https://www.google.com/maps?q=18.040057444891403,78.25856414708075' }],
+  sangareddy:  [{ name:'HKMCF Kitchen – Sangareddy',             address:'Sangareddy, 502001',             type:'Anna Daan', lat:17.677364, lng:77.610282, mapsUrl:'https://www.google.com/maps?q=17.677364322490856,77.61028213068721' }],
+  karimnagar:  [{ name:'HKMCF Kitchen – Karimnagar',             address:'Karimnagar, 505001',             type:'Anna Daan', lat:18.445408, lng:79.136846, mapsUrl:'https://www.google.com/maps?q=18.445408104416728,79.1368458117562' }],
+  sircilla:    [{ name:'HKMCF Kitchen – Rajanna Sircilla',       address:'Sircilla, 505301',               type:'Anna Daan' }],
+  siddipet:    [{ name:'HKMCF Kitchen – Siddipet',               address:'Siddipet, 502103',               type:'Anna Daan', lat:18.123236, lng:78.870722, mapsUrl:'https://www.google.com/maps?q=18.123235981834174,78.87072205141946' }],
+  jayashankar: [{ name:'HKMCF Kitchen – Jayashankar Bhupalpally',address:'Bhupalpally, 506169',            type:'Anna Daan', lat:18.621339, lng:79.920209, mapsUrl:'https://www.google.com/maps?q=18.621339023022436,79.9202090246975' }],
+  mulugu:      [{ name:'HKMCF Kitchen – Mulugu',                 address:'Mulugu, 506343',                 type:'Anna Daan', lat:18.189694, lng:79.921988, mapsUrl:'https://www.google.com/maps?q=18.18969355798922,79.92198798118035' }],
+  jangaon:     [{ name:'HKMCF Kitchen – Jangaon',                address:'Jangaon, 506167',                type:'Anna Daan', lat:17.731764, lng:79.156517, mapsUrl:'https://www.google.com/maps?q=17.731763689885508,79.15651670648651' }],
+  warangal:    [{ name:'HKMCF Kitchen – Warangal',               address:'Warangal, 506001',               type:'Anna Daan', lat:17.994016, lng:79.626594, mapsUrl:'https://www.google.com/maps?q=17.9940162848813,79.6265939227318' }],
+  bhadradri:   [{ name:'HKMCF Kitchen – Bhadradri Kothagudem',   address:'Kothagudem, 507101',             type:'Anna Daan', lat:17.562566, lng:80.622835, mapsUrl:'https://www.google.com/maps?q=17.562565884233,80.6228352617566' }],
+  mahabubabad: [{ name:'HKMCF Kitchen – Mahabubabad',            address:'Mahabubabad, 506101',            type:'Anna Daan', lat:17.597820, lng:79.998692, mapsUrl:'https://www.google.com/maps?q=17.597819742032723,79.99869196030595' }],
+  khammam:     [{ name:'HKMCF Kitchen – Khammam',                address:'Khammam, 507001',                type:'Anna Daan', lat:17.235948, lng:80.132078, mapsUrl:'https://www.google.com/maps?q=17.2359482243832,80.1320779111732' },
+                { name:'HKMCF Kitchen – Madhira',                address:'Madhira, Khammam Dist., 507203', type:'Anna Daan' }],
+  vikarabad:   [{ name:'HKMCF Kitchen – Vikarabad',              address:'Vikarabad, 501101',              type:'Anna Daan' }],
+  rangareddy:  [{ name:'HKMCF Kitchen – Rangareddy',             address:'Shadnagar, RR Dist., 509216',    type:'Anna Daan', lat:17.041304, lng:78.203572, mapsUrl:'https://www.google.com/maps?q=17.0413043637718,78.2035716804297' }],
+  nalgonda:    [{ name:'HKMCF Kitchen – Nalgonda',               address:'Nalgonda, 508001',               type:'Anna Daan' }],
+  suryapet:    [{ name:'HKMCF Kitchen – Suryapet',               address:'Suryapet, 508213',               type:'Anna Daan', lat:17.136024, lng:79.641553, mapsUrl:'https://www.google.com/maps?q=17.136024061986294,79.6415534625347' }],
+  yadadri:     [{ name:'HKMCF Kitchen – Yadadri Bhuvanagiri',    address:'Bhuvanagiri, 508116',            type:'Anna Daan' }],
+  wanaparthy:  [{ name:'HKMCF Kitchen – Wanaparthy',             address:'Wanaparthy, 509103',             type:'Anna Daan', lat:16.206758, lng:77.990608, mapsUrl:'https://www.google.com/maps?q=16.2067575316887,77.9906084022198' }],
+  nagarkurnool:[{ name:'HKMCF Kitchen – Nagarkurnool',           address:'Nagarkurnool, 509209',           type:'Anna Daan', lat:16.469719, lng:78.334919, mapsUrl:'https://www.google.com/maps?q=16.4697186471347,78.3349189448661' }],
+  gadwal:      [{ name:'HKMCF Kitchen – Jogulamba Gadwal',       address:'Gadwal, 509125',                 type:'Anna Daan', lat:16.225888, lng:77.803956, mapsUrl:'https://www.google.com/maps?q=16.2258879270724,77.8039561399639' }],
+  narayanpet:  [{ name:'HKMCF Kitchen – Narayanpet',             address:'Narayanpet, 509210',             type:'Anna Daan' }],
+  medchal:     [{ name:'HKMCF Kitchen – Medchal Malkajgiri',     address:'Medchal, 501401',                type:'Anna Daan' }],
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function kitchensFor(id)   { return KITCHENS[id] || []; }
+function officialUrl(slug) { return `https://${slug}.telangana.gov.in/about-district/map-of-district/`; }
+function gmapsUrl(d)       { return `https://www.google.com/maps/search/${encodeURIComponent(d.name + ' district Telangana')}/@${d.lat},${d.lng},10z`; }
+
+/* ============================================================
+   CANVAS STATE
+   ============================================================ */
+const W = 1000, H = 1000;
+const SCALE = 4;                    // downsample factor for color scan
+const SW = W / SCALE, SH = H / SCALE; // 250×250 sample grid
+let pixelDistrict = null;   // Uint8Array[1M]: district index at full res
+let imgData       = null;   // original 1000×1000 ImageData
+let theImg        = null;   // Image element (needed for small-canvas sampling)
+
+const mainCanvas = document.getElementById('mainCanvas');
+const mainCtx    = mainCanvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+const loadingMsg = document.getElementById('loadingMsg');
+
+/* ── Label override zones ──
+   Some districts have their label text printed inside a neighbouring
+   district's fill. Clicks within r px of the label centroid always
+   open the correct district regardless of BFS assignment. */
+const LABEL_OVERRIDES = [
+  // Hyderabad: label falls below the tiny district in rangareddy/border area (was at 362,586 = yadadri — wrong)
+  { id:'hyderabad',  cx:350, cy:635, r:30 },
+  // Medchal: "Medchal" word printed in siddipet area (northwest of actual district pixels)
+  { id:'medchal',    cx:268, cy:507, r:32 },
+  // Medchal: "Malkajgiri" word at siddipet/yadadri boundary
+  { id:'medchal',    cx:348, cy:552, r:28 },
+  // Wanaparthy: left portion of label falls in gadwal area — enlarged from r:22
+  { id:'wanaparthy', cx:215, cy:830, r:40 },
+  // Hanamkonda (Warangal Urban): upper zone — label area falls in karimnagar+siddipet pixels
+  { id:'hanamkonda', cx:510, cy:413, r:52 },
+  // Hanamkonda (Warangal Urban): lower zone — falls in jangaon pixels
+  { id:'hanamkonda', cx:510, cy:480, r:28 },
+  // Yadadri: "Yadadri" label text falls in jangaon pixel area
+  { id:'yadadri',    cx:475, cy:531, r:30 },
+];
+
+/* ── Size canvas to fit container ── */
+let baseMapSize = 0;
+
+function setMapDisplaySize() {
+  const sz = Math.round(baseMapSize * mapZoom);
+  canvasWrap.style.width  = sz + 'px';
+  canvasWrap.style.height = sz + 'px';
+  mainCanvas.style.width  = sz + 'px';
+  mainCanvas.style.height = sz + 'px';
+  canvasWrap.style.transform = '';
+  drawKitchenPins(sz);
+}
+
+function drawKitchenPins(sz) {
+  const overlay = document.getElementById('pinOverlay');
+  if (!overlay || !sz) return;
+  const LAT_MAX=19.95, LNG_MIN=76.80, LNG_RANGE=4.65, LAT_RANGE=4.20;
+  let circles = '';
+  for (const kitchens of Object.values(KITCHENS)) {
+    for (const k of kitchens) {
+      if (!k.lat || !k.lng) continue;
+      const px = (k.lng - LNG_MIN) / LNG_RANGE * sz;
+      const py = (LAT_MAX - k.lat)  / LAT_RANGE * sz;
+      circles += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" fill="#f97316" stroke="#fff" stroke-width="1.5"/>`;
+    }
+  }
+  overlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" style="display:block;">${circles}</svg>`;
+}
+
+function sizeCanvas() {
+  const c = document.getElementById('mapContainer');
+  baseMapSize = Math.max(150, Math.min(c.clientWidth - 40, c.clientHeight - 40));
+  setMapDisplaySize();
+}
+
+/* ── Scale mouse coords to canvas pixels ── */
+function toCanvasCoords(e) {
+  const rect = mainCanvas.getBoundingClientRect();
+  return {
+    x: Math.round((e.clientX - rect.left) * W / rect.width),
+    y: Math.round((e.clientY - rect.top)  * H / rect.height),
+  };
+}
+
+/* ── Build color → district map ──
+   1. Project each district's lat/lng to full-res (1000×1000) pixel coords.
+   2. Sample seed colour via majority vote (radius 20) in the full canvas —
+      no downsampling artefacts.
+   3. Competitive BFS flood-fill from each seed, stopping at dark border
+      lines (lum < 10) or near-white (lum > 242). Adjacent same-colour
+      districts are separated by those borders rather than by Voronoi
+      geometry, which eliminates the wrong-district-assignment bugs.
+   ──────────────────────────────────────────────────────────────────────── */
+function buildDistrictMap(onComplete) {
+  const LAT_MAX=19.95, LAT_MIN=15.75, LNG_MIN=76.80, LNG_MAX=81.45;
+  const latRange = LAT_MAX - LAT_MIN, lngRange = LNG_MAX - LNG_MIN;
+
+  // Full-resolution image data — avoids colour artefacts from downsampling
+  const fd = mainCtx.getImageData(0, 0, W, H).data;
+
+  const buildRing = (rad) => {
+    const pts = [];
+    if (rad === 0) { pts.push([0,0]); return pts; }
+    for (let t=-rad; t<=rad; t++) { pts.push([t,-rad],[t,rad]); }
+    for (let t=-rad+1; t<=rad-1; t++) { pts.push([-rad,t],[rad,t]); }
+    return pts;
+  };
+
+  // Project each district + sample seed colour (majority vote, radius 20, full canvas)
+  DISTRICTS.forEach((d, i) => {
+    d._px = (d.lng - LNG_MIN) / lngRange * W;
+    d._py = (LAT_MAX - d.lat) / latRange * H;
+    d._idx = i + 1;
+    const cx = Math.min(W-1, Math.max(0, Math.round(d._px)));
+    const cy = Math.min(H-1, Math.max(0, Math.round(d._py)));
+    const cb = {};
+    for (let r = 0; r <= 20; r++) {
+      for (const [dx,dy] of buildRing(r)) {
+        const sx=Math.max(0,Math.min(W-1,cx+dx)), sy=Math.max(0,Math.min(H-1,cy+dy));
+        const p=(sy*W+sx)*4;
+        const pr=fd[p],pg=fd[p+1],pb=fd[p+2];
+        const lum=(pr+pg+pb)/3, spr=Math.max(pr,pg,pb)-Math.min(pr,pg,pb);
+        if (lum>=10&&lum<=242&&spr>=8&&!(pr>180&&pg<40&&pb<40)) {
+          const bk=`${pr>>5},${pg>>5},${pb>>5}`;
+          if (!cb[bk]) cb[bk]={r:0,g:0,b:0,n:0};
+          cb[bk].r+=pr; cb[bk].g+=pg; cb[bk].b+=pb; cb[bk].n++;
+        }
+      }
+    }
+    let bn=0;
+    for (const v of Object.values(cb)) {
+      if (v.n>bn) { bn=v.n; d._r=Math.round(v.r/v.n); d._g=Math.round(v.g/v.n); d._b=Math.round(v.b/v.n); }
+    }
+    if (bn===0) { const fp=(cy*W+cx)*4; d._r=fd[fp];d._g=fd[fp+1];d._b=fd[fp+2]; }
+  });
+
+  // Competitive BFS flood-fill
+  const THRESH2 = 1200; // ≈35-unit colour radius; wide enough for fill variation
+  pixelDistrict = new Uint8Array(W * H);
+  const visited  = new Uint8Array(W * H);
+  const qPos     = new Int32Array(W * H);
+  const qDist    = new Uint8Array(W * H);
+  let qHead = 0, qTail = 0;
+
+  // Seed: spiral outward from projected centre to find first unvisited pixel
+  // that (a) matches the seed colour within THRESH2 and (b) has at least one
+  // same-colour neighbour — so we never seed on an isolated border pixel.
+  DISTRICTS.forEach(d => {
+    const cx = Math.min(W-1, Math.max(0, Math.round(d._px)));
+    const cy = Math.min(H-1, Math.max(0, Math.round(d._py)));
+    outer: for (let rad = 0; rad <= 200; rad++) {
+      for (const [dx,dy] of buildRing(rad)) {
+        const sx=Math.max(0,Math.min(W-1,cx+dx)), sy=Math.max(0,Math.min(H-1,cy+dy));
+        const i=sy*W+sx;
+        if (visited[i]) continue;
+        const p=i*4, pr=fd[p],pg=fd[p+1],pb=fd[p+2];
+        const lum=(pr+pg+pb)/3;
+        if (lum<10||lum>242) continue;
+        const dr=pr-d._r, dg=pg-d._g, db=pb-d._b;
+        if (dr*dr+dg*dg+db*db>THRESH2) continue;
+        // Require ≥3 unvisited same-colour neighbours so we seed in the
+        // interior of the fill, not on an isolated or border-adjacent pixel.
+        let nbrCount=0;
+        for(const[nx,ny] of [[sx-1,sy],[sx+1,sy],[sx,sy-1],[sx,sy+1]]){
+          if(nx<0||nx>=W||ny<0||ny>=H) continue;
+          const ni=ny*W+nx; if(visited[ni]) continue;
+          const np2=ni*4,pr2=fd[np2],pg2=fd[np2+1],pb2=fd[np2+2];
+          const lum2=(pr2+pg2+pb2)/3; if(lum2<10||lum2>242) continue;
+          const dr2=pr2-d._r,dg2=pg2-d._g,db2=pb2-d._b;
+          if(dr2*dr2+dg2*dg2+db2*db2<=THRESH2) nbrCount++;
+        }
+        if(nbrCount<3) continue;
+        visited[i]=1; pixelDistrict[i]=d._idx;
+        qPos[qTail]=i; qDist[qTail]=d._idx; qTail++;
+        break outer;
+      }
+    }
+  });
+
+  // BFS expansion helper (closes over fd, visited, pixelDistrict, qPos, qDist, qTail, THRESH2)
+  const expand = (np, dIdx, sr, sg, sb) => {
+    if (visited[np]) return;
+    const p=np*4, pr=fd[p],pg=fd[p+1],pb=fd[p+2];
+    const lum=(pr+pg+pb)/3;
+    if (lum<10||lum>242) return;
+    const dr=pr-sr, dg=pg-sg, db=pb-sb;
+    if (dr*dr+dg*dg+db*db>THRESH2) return;
+    visited[np]=1; pixelDistrict[np]=dIdx;
+    if (qTail < W*H) { qPos[qTail]=np; qDist[qTail]=dIdx; qTail++; }
+  };
+
+  while (qHead < qTail) {
+    const pos=qPos[qHead], dIdx=qDist[qHead]; qHead++;
+    const d=DISTRICTS[dIdx-1];
+    const sr=d._r, sg=d._g, sb=d._b;
+    const x=pos%W, y=(pos/W)|0;
+    if(x>0)   expand(pos-1, dIdx, sr, sg, sb);
+    if(x<W-1) expand(pos+1, dIdx, sr, sg, sb);
+    if(y>0)   expand(pos-W, dIdx, sr, sg, sb);
+    if(y<H-1) expand(pos+W, dIdx, sr, sg, sb);
+  }
+
+  onComplete();
+}
+
+/* ── Map click: resolve district from pixel and open modal ── */
+canvasWrap.addEventListener('click', e => {
+  if (!pixelDistrict) return;
+  const rect = mainCanvas.getBoundingClientRect();
+  const cx = Math.round((e.clientX - rect.left) * W / rect.width);
+  const cy = Math.round((e.clientY - rect.top)  * H / rect.height);
+  if (cx < 0 || cx >= W || cy < 0 || cy >= H) return;
+
+  // Label override: small districts whose label text falls inside a neighbour's fill
+  for (const ov of LABEL_OVERRIDES) {
+    const dx=cx-ov.cx, dy=cy-ov.cy;
+    if (dx*dx+dy*dy <= ov.r*ov.r) {
+      const d = DISTRICTS.find(x => x.id === ov.id);
+      if (d) { openModal(d); return; }
+    }
+  }
+
+  let idx = pixelDistrict[cy * W + cx];
+  // If click lands on a border/unassigned pixel, spiral outward to find nearest district
+  if (!idx) {
+    outer: for (let r = 1; r <= 35; r++) {
+      const pts = [];
+      for (let t=-r;t<=r;t++) { pts.push([t,-r],[t,r]); }
+      for (let t=-r+1;t<=r-1;t++) { pts.push([-r,t],[r,t]); }
+      for (const [dx,dy] of pts) {
+        const nx=Math.max(0,Math.min(W-1,cx+dx)), ny=Math.max(0,Math.min(H-1,cy+dy));
+        const ni=pixelDistrict[ny*W+nx];
+        if (ni) { idx=ni; break outer; }
+      }
+    }
+  }
+  if (idx > 0) {
+    let d = DISTRICTS[idx - 1];
+    // Warangal Urban was renamed Hanamkonda in 2021 — show hanamkonda map for both
+    if (d.id === 'warangal') d = DISTRICTS.find(x => x.id === 'hanamkonda') || d;
+    openModal(d);
+  }
+});
+canvasWrap.style.cursor = 'pointer';
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function buildSidebar() {
+  const list = document.getElementById('sbList');
+  list.innerHTML = '';
+  let total = 0;
+  DISTRICTS.forEach(d => {
+    const c = kitchensFor(d.id).length;
+    total += c;
+    const el = document.createElement('div');
+    el.className = `sb-item${c === 0 ? ' no-data' : ''}`;
+    el.dataset.id   = d.id;
+    el.dataset.name = d.name.toLowerCase();
+    el.innerHTML = `<span class="sb-dot"></span>
+                    <a class="sb-link" href="#" onclick="openModal(DISTRICTS.find(function(x){return x.id==='${d.id}';}));return false;">${d.name}</a>
+                    <span class="sb-badge">${c}</span>`;
+    list.appendChild(el);
+  });
+  document.getElementById('hdrKitchens').textContent = total;
+  document.getElementById('sbFooter').textContent = `33 districts · ${total} kitchens`;
+}
+
+function filterList(q) {
+  const lq = q.toLowerCase();
+  document.querySelectorAll('.sb-item').forEach(el => {
+    el.style.display = el.dataset.name.includes(lq) ? '' : 'none';
+  });
+}
+
+/* ============================================================
+   MAP CANVAS ZOOM
+   ============================================================ */
+let mapZoom = 1.0;
+
+function mapZoomIn() {
+  mapZoom = Math.min(4.0, +(mapZoom + 0.25).toFixed(2));
+  setMapDisplaySize();
+  document.getElementById('mapZoomLbl').textContent = Math.round(mapZoom * 100) + '%';
+}
+function mapZoomOut() {
+  mapZoom = Math.max(1.0, +(mapZoom - 0.25).toFixed(2));
+  setMapDisplaySize();
+  document.getElementById('mapZoomLbl').textContent = Math.round(mapZoom * 100) + '%';
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+let zoomLevel = 1.0;
+
+function zoomIn() {
+  zoomLevel = Math.min(4.0, +(zoomLevel + 0.25).toFixed(2));
+  applyZoom();
+}
+function zoomOut() {
+  zoomLevel = Math.max(0.5, +(zoomLevel - 0.25).toFixed(2));
+  applyZoom();
+}
+function applyZoom() {
+  const panel = document.getElementById('imgPanel');
+  const img   = panel.querySelector('img');
+  if (!img) return;
+  if (zoomLevel <= 1.0) {
+    panel.style.overflow = 'hidden';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+  } else {
+    panel.style.overflow = 'auto';
+    img.style.width = (zoomLevel * 100) + '%';
+    img.style.height = 'auto';
+    img.style.objectFit = 'unset';
+  }
+  document.getElementById('zoomLbl').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+function openModal(d) {
+  document.getElementById('mName').textContent = d.name;
+  document.getElementById('btnGmaps').href     = gmapsUrl(d);
+
+  // Resolve kitchens early so firstWithLoc is available for the map inset
+  const kitchens    = kitchensFor(d.id);
+  const firstWithLoc = kitchens.find(k => k.mapsUrl);
+
+  // Reset zoom
+  zoomLevel = 1.0;
+
+  // District image / placeholder
+  const panel = document.getElementById('imgPanel');
+  panel.style.overflow = 'hidden';
+  const src = DISTRICT_IMAGES[d.id];
+
+  function addKitchenPin() {
+    const bounds = DISTRICT_BOUNDS[d.id];
+    if (!bounds || !firstWithLoc) return;
+    const img = panel.querySelector('img');
+    if (!img) return;
+    function placePin() {
+      // Calculate where the image is actually rendered inside the panel (object-fit:contain)
+      const nw = img.naturalWidth, nh = img.naturalHeight;
+      const ow = img.offsetWidth,  oh = img.offsetHeight;
+      const scale = Math.min(ow / nw, oh / nh);
+      const rw = nw * scale, rh = nh * scale;
+      const rx = (ow - rw) / 2, ry = (oh - rh) / 2;
+      // Project kitchen lat/lng to pixel position on the rendered image
+      const xFrac = (firstWithLoc.lng - bounds.lngMin) / (bounds.lngMax - bounds.lngMin);
+      const yFrac = (bounds.latMax - firstWithLoc.lat)  / (bounds.latMax - bounds.latMin);
+      const px = rx + xFrac * rw;
+      const py = ry + yFrac * rh;
+      const pin = document.createElement('div');
+      pin.className = 'km-pin';
+      pin.style.left = px + 'px';
+      pin.style.top  = py + 'px';
+      pin.innerHTML = `<svg width="24" height="32" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill="#ea580c" stroke="white" stroke-width="1.5"/>
+        <circle cx="12" cy="12" r="5" fill="white"/>
+      </svg>`;
+      panel.appendChild(pin);
+    }
+    // setTimeout defers until after the current task (including layout/flex sizing) completes
+    if (img.complete && img.naturalWidth) {
+      setTimeout(placePin, 50);
+    } else {
+      img.addEventListener('load', () => setTimeout(placePin, 50), { once: true });
+    }
+  }
+
+  if (src) {
+    if (src.endsWith('.pdf')) {
+      panel.style.overflow = 'hidden';
+      document.getElementById('zoomControls').style.display = 'none';
+      fetch(src, { method: 'HEAD' }).then(r => {
+        if (r.ok) {
+          panel.innerHTML = `<embed src="${src}" type="application/pdf" width="100%" height="100%" style="border:none;" />`;
+        } else {
+          panel.innerHTML = `<div class="img-placeholder"><div class="ph-icon">🗺️</div><h3>${d.name} District</h3><p>PDF map not yet available.</p><div class="ph-badge">Coming Soon</div></div>`;
+        }
+        addKitchenPin();
+      }).catch(() => {
+        panel.innerHTML = `<div class="img-placeholder"><div class="ph-icon">🗺️</div><h3>${d.name} District</h3><p>PDF map not yet available.</p><div class="ph-badge">Coming Soon</div></div>`;
+        addKitchenPin();
+      });
+    } else {
+      panel.innerHTML = `<img src="${src}" alt="${d.name} district map" />`;
+      document.getElementById('zoomControls').style.display = 'flex';
+      document.getElementById('zoomLbl').textContent = '100%';
+      addKitchenPin();
+    }
+  } else {
+    panel.innerHTML = `
+      <div class="img-placeholder">
+        <div class="ph-icon">🗺️</div>
+        <h3>${d.name} District</h3>
+        <p>District map not yet available for this district.</p>
+        <div class="ph-badge">Coming Soon</div>
+      </div>`;
+    document.getElementById('zoomControls').style.display = 'none';
+    addKitchenPin();
+  }
+
+  // Kitchen cards
+  document.getElementById('kpCount').textContent = kitchens.length;
+  const kl = document.getElementById('kpList');
+  kl.innerHTML = kitchens.length
+    ? kitchens.map(k => `
+        <div class="kitchen-card">
+          <div class="kc-name">${k.name}${k.mapsUrl ? ` <a href="${k.mapsUrl}" target="_blank" rel="noopener" title="Open in Google Maps" style="text-decoration:none;font-size:15px;">📌</a>` : ''}</div>
+          <div class="kc-address">${k.address}</div>
+          <span class="kc-badge">${k.type}</span>
+        </div>`).join('')
+    : `<div class="kp-empty"><div class="icon">🍽️</div><p>No kitchens recorded yet.</p></div>`;
+
+  // Kitchen Location footer button
+  const btnKL = document.getElementById('btnKitchenLoc');
+  if (firstWithLoc) {
+    btnKL.href = firstWithLoc.mapsUrl;
+    btnKL.style.display = '';
+  } else {
+    btnKL.style.display = 'none';
+  }
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ============================================================
+   INIT — load image, build pixel map, show canvas
+   ============================================================ */
+window.addEventListener('load', () => {
+  sizeCanvas();
+  window.addEventListener('resize', sizeCanvas);
+
+  const img = new Image();
+  img.onload = () => {
+    theImg = img;
+    mainCtx.drawImage(img, 0, 0, W, H);
+    imgData = mainCtx.getImageData(0, 0, W, H);
+
+    buildDistrictMap(() => {
+      loadingMsg.style.display = 'none';
+      canvasWrap.style.display = 'block';
+      document.getElementById('mapControls').style.display = 'flex';
+      sizeCanvas(); // recalc after controls bar appears
+      buildSidebar();
+    });
+  };
+  img.onerror = () => {
+    loadingMsg.innerHTML = '⚠️ Could not load map image.<br>Check that <code>districts/Telangana-New-Map-33-Districts.png</code> exists.';
+  };
+  img.src = 'districts/Telangana-New-Map-33-Districts.png';
+});
+</script>
+</body>
+</html>
